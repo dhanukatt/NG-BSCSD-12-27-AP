@@ -31,6 +31,13 @@ const Service: React.FC = () => {
 
   return (
     <>
+    <img 
+  src="your-image-source.jpg" 
+  alt="Sign Up" 
+  className="object-cover w-full h-full rounded-lg shadow-lg"
+  style={{ minHeight: 500 }} // Ensure proper syntax without quotes for numeric values
+/>
+
       <Navbar />
       <main className="pt-20 bg-gray-50">
         <div className="p-8 max-w-7xl mx-auto text-center">
