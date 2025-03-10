@@ -3,28 +3,36 @@ import { authApi } from '../api';
 import { User } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faLock, faSignInAlt } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faEnvelope, faLock, faSignInAlt } from '@fortawesome/free-solid-svg-icons';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-const Login = () => {
+const Signup = () => {
     const formRef = useRef<HTMLFormElement>(null);
     const [formState, setFormState] = useState({
         username: '',
+        email: '',
         password: '',
+        confirmPassword: '',
         error: '',
         isLoading: false
     });
     const navigate = useNavigate();
 
-    const performLogin = useCallback(async () => {
+    const performSignup = useCallback(async () => {
         if (formState.isLoading) return;
-        
+
+        // Validate password match
+        if (formState.password !== formState.confirmPassword) {
+            setFormState(prev => ({ ...prev, error: 'Passwords do not match' }));
+            return;
+        }
+
         setFormState(prev => ({ ...prev, error: '', isLoading: true }));
 
         try {
-            const response = await authApi.login(formState.username, formState.password);
-            
+            const response = await authApi.signup(formState.username, formState.email, formState.password);
+
             // Store tokens and user data
             localStorage.setItem('accessToken', response.accessToken);
             localStorage.setItem('refreshToken', response.refreshToken);
@@ -32,6 +40,7 @@ const Login = () => {
             const user: User = {
                 id: response.id,
                 username: response.username,
+                email: response.email,
                 role: response.role,
                 customerId: response.customerId || undefined,
                 driverId: response.driverId || undefined,
@@ -40,31 +49,19 @@ const Login = () => {
 
             localStorage.setItem('user', JSON.stringify(user));
 
-            // Navigate based on role
-            switch(user.role) {
-                case 'CUSTOMER':
-                    navigate('/customer/');
-                    break;
-                case 'DRIVER':
-                    navigate('/driver/');
-                    break;
-                case 'ADMIN':
-                    navigate('/admin/');
-                    break;
-                default:
-                    navigate('/');
-            }
+            // Navigate to the home page or dashboard
+            navigate('/');
 
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 
                                err.response?.data?.error ||
                                err.message || 
-                               'Login failed. Please try again.';
+                               'Signup failed. Please try again.';
             setFormState(prev => ({ ...prev, error: errorMessage }));
         } finally {
             setFormState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [formState.username, formState.password, formState.isLoading, navigate]);
+    }, [formState.username, formState.email, formState.password, formState.confirmPassword, formState.isLoading, navigate]);
 
     const handleSubmit = useCallback((event: React.FormEvent) => {
         event.preventDefault();
@@ -74,15 +71,23 @@ const Login = () => {
             setFormState(prev => ({ ...prev, error: 'Username is required' }));
             return;
         }
+        if (!formState.email) {
+            setFormState(prev => ({ ...prev, error: 'Email is required' }));
+            return;
+        }
         if (!formState.password) {
             setFormState(prev => ({ ...prev, error: 'Password is required' }));
             return;
         }
+        if (!formState.confirmPassword) {
+            setFormState(prev => ({ ...prev, error: 'Confirm Password is required' }));
+            return;
+        }
 
-        performLogin();
-    }, [formState.username, formState.password, performLogin]);
+        performSignup();
+    }, [formState.username, formState.email, formState.password, formState.confirmPassword, performSignup]);
 
-    const handleInputChange = useCallback((field: 'username' | 'password', value: string) => {
+    const handleInputChange = useCallback((field: 'username' | 'email' | 'password' | 'confirmPassword', value: string) => {
         setFormState(prev => ({ ...prev, [field]: value, error: '' }));
     }, []);
 
@@ -94,7 +99,7 @@ const Login = () => {
                     <div className="flex-1 bg-gray-900 p-8 rounded-lg shadow-lg border border-gray-800">
                         <h2 className="text-2xl font-bold mb-4 text-center text-white flex items-center justify-center">
                             <FontAwesomeIcon icon={faSignInAlt} className="mr-2 text-indigo-500" />
-                            Login
+                            Sign Up
                         </h2>
                         {formState.error && (
                             <div className="mb-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded relative" role="alert" aria-live="assertive">
@@ -119,6 +124,21 @@ const Login = () => {
                                 </div>
                             </div>
                             <div>
+                                <label htmlFor="email" className="block text-gray-300 text-sm font-bold mb-2">Email</label>
+                                <div className="relative">
+                                    <input
+                                        type="email"
+                                        id="email"
+                                        className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 text-gray-300 bg-gray-800 leading-tight focus:outline-none focus:shadow-outline pl-10"
+                                        value={formState.email}
+                                        onChange={(e) => handleInputChange('email', e.target.value)}
+                                        required
+                                        aria-required="true"
+                                    />
+                                    <FontAwesomeIcon icon={faEnvelope} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                                </div>
+                            </div>
+                            <div>
                                 <label htmlFor="password" className="block text-gray-300 text-sm font-bold mb-2">Password</label>
                                 <div className="relative">
                                     <input
@@ -133,6 +153,21 @@ const Login = () => {
                                     <FontAwesomeIcon icon={faLock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                                 </div>
                             </div>
+                            <div>
+                                <label htmlFor="confirmPassword" className="block text-gray-300 text-sm font-bold mb-2">Confirm Password</label>
+                                <div className="relative">
+                                    <input
+                                        type="password"
+                                        id="confirmPassword"
+                                        className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 text-gray-300 bg-gray-800 leading-tight focus:outline-none focus:shadow-outline pl-10"
+                                        value={formState.confirmPassword}
+                                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                                        required
+                                        aria-required="true"
+                                    />
+                                    <FontAwesomeIcon icon={faLock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                                </div>
+                            </div>
                             <div className="flex items-center justify-between">
                                 <button 
                                     type="submit"
@@ -140,18 +175,18 @@ const Login = () => {
                                     disabled={formState.isLoading}
                                     aria-disabled={formState.isLoading}
                                 >
-                                    {formState.isLoading ? 'Logging in...' : 'Log In'}
+                                    {formState.isLoading ? 'Signing up...' : 'Sign Up'}
                                 </button>
                             </div>
                         </form>
                         <p className="mt-4 text-center text-gray-400">
-                            Don't have an account? <Link to="/signup" className="text-indigo-500 hover:underline">Sign Up</Link>
+                            Already have an account? <Link to="/login" className="text-indigo-500 hover:underline">Log In</Link>
                         </p>
                     </div>
                     <div className="flex-1">
                         <img 
-                            src="/assets/images/login.jpg" 
-                            alt="Login" 
+                            src="/assets/images/signup-dark.jpg"  {/* Updated photo */}
+                            alt="Sign Up" 
                             className="object-cover w-full h-full rounded-lg shadow-lg"
                             style={{ minHeight: '500px' }} 
                         />
@@ -163,4 +198,4 @@ const Login = () => {
     );
 };
 
-export default React.memo(Login);
+export default React.memo(Signup);
