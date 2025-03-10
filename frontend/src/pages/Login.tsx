@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useCallback, useRef } from 'react';
 import { authApi } from '../api';
 import { User } from '../types';
@@ -90,46 +89,48 @@ const Login = () => {
     return (
         <>
             <Navbar />
-            <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 mt-20">
+            <div className="flex justify-center items-center min-h-screen bg-black p-6 mt-20">
                 <div className="flex w-full max-w-6xl mx-auto gap-6">
-                    <div className="flex-1 bg-white p-8 rounded-lg shadow-lg">
-                        <h2 className="text-2xl font-bold mb-4 text-center text-gray-800 flex items-center justify-center">
-                            <FontAwesomeIcon icon={faSignInAlt} className="mr-2 text-indigo-600" />
+                    <div className="flex-1 bg-gray-900 p-8 rounded-lg shadow-lg border border-gray-800">
+                        <h2 className="text-2xl font-bold mb-4 text-center text-white flex items-center justify-center">
+                            <FontAwesomeIcon icon={faSignInAlt} className="mr-2 text-indigo-500" />
                             Login
                         </h2>
                         {formState.error && (
-                            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
+                            <div className="mb-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded relative" role="alert" aria-live="assertive">
                                 <strong className="font-bold">Error: </strong>
                                 <span className="block sm:inline">{formState.error}</span>
                             </div>
                         )}
                         <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate>
                             <div>
-                                <label htmlFor="username" className="block text-gray-700 text-sm font-bold mb-2">Username</label>
+                                <label htmlFor="username" className="block text-gray-300 text-sm font-bold mb-2">Username</label>
                                 <div className="relative">
                                     <input
                                         type="text"
                                         id="username"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline pl-10"
+                                        className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 text-gray-300 bg-gray-800 leading-tight focus:outline-none focus:shadow-outline pl-10"
                                         value={formState.username}
                                         onChange={(e) => handleInputChange('username', e.target.value)}
                                         required
+                                        aria-required="true"
                                     />
-                                    <FontAwesomeIcon icon={faUser} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                    <FontAwesomeIcon icon={faUser} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                                <label htmlFor="password" className="block text-gray-300 text-sm font-bold mb-2">Password</label>
                                 <div className="relative">
                                     <input
                                         type="password"
                                         id="password"
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline pl-10"
+                                        className="shadow appearance-none border border-gray-700 rounded w-full py-2 px-3 text-gray-300 bg-gray-800 leading-tight focus:outline-none focus:shadow-outline pl-10"
                                         value={formState.password}
                                         onChange={(e) => handleInputChange('password', e.target.value)}
                                         required
+                                        aria-required="true"
                                     />
-                                    <FontAwesomeIcon icon={faLock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                    <FontAwesomeIcon icon={faLock} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -137,17 +138,14 @@ const Login = () => {
                                     type="submit"
                                     className={`bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transform hover:scale-105 transition-transform ${formState.isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} 
                                     disabled={formState.isLoading}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        handleSubmit(e);
-                                    }}
+                                    aria-disabled={formState.isLoading}
                                 >
                                     {formState.isLoading ? 'Logging in...' : 'Log In'}
                                 </button>
                             </div>
                         </form>
-                        <p className="mt-4 text-center text-gray-600">
-                            Don't have an account? <Link to="/signup" className="text-indigo-600 hover:underline">Sign Up</Link>
+                        <p className="mt-4 text-center text-gray-400">
+                            Don't have an account? <Link to="/signup" className="text-indigo-500 hover:underline">Sign Up</Link>
                         </p>
                     </div>
                     <div className="flex-1">
@@ -165,4 +163,4 @@ const Login = () => {
     );
 };
 
-export default Login;
+export default React.memo(Login);
