@@ -70,7 +70,7 @@ const BillList: React.FC<BillListProps> = ({ bills, role, payBill }) => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center">
-                                            <FontAwesomeIcon icon={faBookmark} className="text-blue-50 mr-2" />
+                                            <FontAwesomeIcon icon={faBookmark} className="text-blue-500 mr-2" />
                                             {bill.bookingId}
                                         </div>
                                     </td>
@@ -120,7 +120,7 @@ const BillList: React.FC<BillListProps> = ({ bills, role, payBill }) => {
                 </div>
             )}
 
-            <div className={`fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-30 ${isPaymentPanelOpen ? 'opacity-10' : 'opacity-0 pointer-events-none'}`}>
+            <div className={`fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300 ${isPaymentPanelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 {isPaymentPanelOpen && selectedBill && (
                             <PaymentPanel
                                 isOpen={isPaymentPanelOpen}
