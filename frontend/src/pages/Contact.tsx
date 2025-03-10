@@ -21,7 +21,7 @@ const Contact: React.FC = () => {
                   <FontAwesomeIcon icon={faPhone} className="text-yellow-500 text-xl" />
                   <div>
                     <h3 className="font-semibold">Phone</h3>
-                    <p>+94 123 456 789</p>
+                    <p>+94 764071744</p>
                   </div>
                 </div>
                 
