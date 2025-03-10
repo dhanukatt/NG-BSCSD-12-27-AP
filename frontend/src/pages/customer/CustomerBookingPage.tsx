@@ -1,87 +1,68 @@
-import React, { useState } from 'react';
-import ReactGoogleAutocomplete from 'react-google-autocomplete';
-import npm install react-google-autocomplete;
+import React, { useState, useCallback } from 'react';
+import BookingList from '../../components/BookingList';
+import BookingForm from '../../components/BookingForm';
+import useBookings from '../../hooks/useBookings';
+import { billingApi } from '../../api';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCalendarCheck, faPlus } from '@fortawesome/free-solid-svg-icons';
 
-interface BookingFormProps {
-    onClose: () => void;
-    onBookingCreated: () => void;
-}
+const CustomerBookingPage: React.FC = () => {
+    const { bookings, loading, error, fetchBookings, cancelBooking } = useBookings('CUSTOMER');
+    const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
 
-const BookingForm: React.FC<BookingFormProps> = ({ onClose, onBookingCreated }) => {
-    const [pickupAddress, setPickupAddress] = useState('');
-    const [destinationAddress, setDestinationAddress] = useState('');
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
+    const handleBookingCreated = useCallback(() => {
+        setIsBookingFormOpen(false);
+        fetchBookings();
+    }, [fetchBookings]);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Handle form submission (e.g., API call to create booking)
-        console.log({ pickupAddress, destinationAddress, date, time });
-        onBookingCreated();
+    const handleCancelBooking = async (id: number) => {
+        try {
+            await cancelBooking(id);
+            alert('Booking cancelled successfully');
+            fetchBookings();
+        } catch (err) {
+            console.error('Failed to cancel booking', err);
+            alert('Failed to cancel booking');
+        }
     };
 
+    if (loading) return <div>Loading bookings...</div>;
+    if (error) return <div>Error: {error.message}</div>;
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-                <h2 className="text-xl font-bold mb-4">Create Booking</h2>
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Pickup Address</label>
-                        <ReactGoogleAutocomplete
-                            apiKey="YOUR_GOOGLE_MAPS_API_KEY"
-                            onPlaceSelected={(place) => setPickupAddress(place.formatted_address)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Enter pickup address"
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Destination Address</label>
-                        <ReactGoogleAutocomplete
-                            apiKey="YOUR_GOOGLE_MAPS_API_KEY"
-                            onPlaceSelected={(place) => setDestinationAddress(place.formatted_address)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Enter destination address"
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Date</label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            required
-                        />
-                    </div>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Time</label>
-                        <input
-                            type="time"
-                            value={time}
-                            onChange={(e) => setTime(e.target.value)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            required
-                        />
-                    </div>
-                    <div className="flex justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-                        >
-                            Create Booking
-                        </button>
-                    </div>
-                </form>
+        <div className="min-h-screen">
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 rounded-md">
+                    Customer Bookings
+                    <FontAwesomeIcon icon={faCalendarCheck} className="ml-2" />
+                </h1>
             </div>
+            <div className="flex justify-end mb-4">
+                <button
+                    onClick={() => setIsBookingFormOpen(true)}
+                    className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 focus:outline-none focus:shadow-outline transform hover:scale-105"
+                >
+                    Create Booking
+                    <FontAwesomeIcon icon={faPlus} className="ml-2" />
+                </button>
+            </div>
+            <BookingList 
+                bookings={bookings} 
+                role="customer" 
+                onCancel={handleCancelBooking} 
+                payBill={async (id: number) => {
+                    await billingApi.payBill(id);
+                    fetchBookings();
+                }}
+            />
+            {isBookingFormOpen && (
+                <BookingForm 
+                    onClose={() => setIsBookingFormOpen(false)} 
+                    onBookingCreated={handleBookingCreated} 
+                />
+            )}
         </div>
     );
 };
 
-export default BookingForm;
+export default CustomerBookingPage;
