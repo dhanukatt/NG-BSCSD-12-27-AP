@@ -6,7 +6,7 @@ import { faSyncAlt, faTimes } from '@fortawesome/free-solid-svg-icons';
 interface PasswordEditModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onUpdatePassword: (data: any) => void;
+    onUpdatePassword: (data: { oldPassword: string; newPassword: string }) => Promise<void>;
 }
 
 const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, onUpdatePassword }) => {
@@ -16,6 +16,7 @@ const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, 
         confirmPassword: '',
     });
     const [updateError, setUpdateError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isOpen) return null;
 
@@ -32,10 +33,19 @@ const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, 
     const handleUpdatePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setUpdateError(null);
+
+        // Validate form fields
+        if (!passwordUpdate.oldPassword || !passwordUpdate.newPassword || !passwordUpdate.confirmPassword) {
+            setUpdateError('All fields are required.');
+            return;
+        }
+
         if (passwordUpdate.newPassword !== passwordUpdate.confirmPassword) {
             setUpdateError("New password and confirm password don't match.");
             return;
         }
+
+        setIsSubmitting(true);
 
         try {
             await onUpdatePassword({
@@ -43,9 +53,11 @@ const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, 
                 newPassword: passwordUpdate.newPassword,
             });
             alert('Password updated successfully!');
-            onClose();
+            handleCancelEdit(); // Reset form and close modal
         } catch (err: any) {
-            setUpdateError(err.message || 'Failed to update password');
+            setUpdateError(err.message || 'Failed to update password. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -74,6 +86,7 @@ const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, 
                                     onChange={(e) => setPasswordUpdate({ ...passwordUpdate, oldPassword: e.target.value })}
                                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-300 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                     required
+                                    disabled={isSubmitting}
                                 />
                             </div>
                             <div>
@@ -86,6 +99,7 @@ const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, 
                                     onChange={(e) => setPasswordUpdate({ ...passwordUpdate, newPassword: e.target.value })}
                                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-300 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                     required
+                                    disabled={isSubmitting}
                                 />
                             </div>
                             <div>
@@ -98,21 +112,24 @@ const PasswordEditModal: React.FC<PasswordEditModalProps> = ({ isOpen, onClose, 
                                     onChange={(e) => setPasswordUpdate({ ...passwordUpdate, confirmPassword: e.target.value })}
                                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-300 bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                     required
+                                    disabled={isSubmitting}
                                 />
                             </div>
                             {updateError && <p className="text-red-400 text-xs italic">{updateError}</p>}
                             <div className="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                                 <button
                                     type="submit"
-                                    className="w-full inline-flex items-center justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm transition-all duration-200 transform hover:scale-105 mx-2"
+                                    className={`w-full inline-flex items-center justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm transition-all duration-200 transform hover:scale-105 mx-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isSubmitting}
                                 >
-                                    Update Password
-                                    <FontAwesomeIcon icon={faSyncAlt} className="ml-2 self-center" />
+                                    {isSubmitting ? 'Updating...' : 'Update Password'}
+                                    <FontAwesomeIcon icon={faSyncAlt} className={`ml-2 self-center ${isSubmitting ? 'animate-spin' : ''}`} />
                                 </button>
                                 <button
                                     type="button"
                                     className="mt-3 w-full inline-flex items-center justify-center rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-base font-medium text-gray-300 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm transition-all duration-200 transform hover:scale-105"
                                     onClick={handleCancelEdit}
+                                    disabled={isSubmitting}
                                 >
                                     Cancel
                                     <FontAwesomeIcon icon={faTimes} className="ml-2 self-center" />
