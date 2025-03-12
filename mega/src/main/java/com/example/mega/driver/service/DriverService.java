@@ -5,154 +5,208 @@ import com.example.mega.auth.repository.UserRepository;
 import com.example.mega.driver.model.Driver;
 import com.example.mega.driver.repository.DriverRepository;
 import com.example.mega.dto.DriverDTO;
-import com.example.mega.util.ImageStorageUtil;
-import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
+import com.example.mega.util.ImageStorageUtil;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
-@RequiredArgsConstructor
 public class DriverService {
 
-    private final DriverRepository driverRepository;
-    private final ModelMapper modelMapper;
-    private final UserRepository userRepository;
-    private final ImageStorageUtil imageStorageUtil;
+    @Autowired
+    private DriverRepository driverRepository;
 
-    @Value("${upload.directory}")
+    @Autowired
+    private ModelMapper modelMapper;
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ImageStorageUtil imageStorageUtil;
+
+    @Value("${upload.directory}") 
     private String uploadPath;
 
     @Transactional
     public DriverDTO createDriver(DriverDTO driverDTO, MultipartFile profilePicture) {
-        validateDriverDTO(driverDTO);
+        try {
+            if (driverDTO == null) {
+                throw new IllegalArgumentException("Driver object cannot be null");
+            }
+            if (driverRepository.findByLicenseNumber(driverDTO.getLicenseNumber()).isPresent()) {
+                throw new IllegalArgumentException("License number already exists");
+            }
+            if (driverDTO.getUserId() == null) {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                String currentUsername = authentication.getName();
+                Optional<User> user = userRepository.findByUsername(currentUsername);
+                if(user.isPresent()) {
+                    driverDTO.setUserId(user.get().getId());
+                }
 
-        if (driverRepository.findByLicenseNumber(driverDTO.getLicenseNumber()).isPresent()) {
-            throw new IllegalArgumentException("License number already exists");
+            }
+            Driver driver = modelMapper.map(driverDTO, Driver.class);
+
+            // Handle profile picture upload
+            if (profilePicture != null && !profilePicture.isEmpty()) {
+                String profilePicturePath = imageStorageUtil.saveImage(profilePicture, uploadPath);
+                driver.setProfilePicturePath(profilePicturePath);
+            }
+
+            Driver savedDriver = driverRepository.save(driver);
+
+            User user = userRepository.findById(driverDTO.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + driverDTO.getUserId()));
+
+            user.setDriverId(savedDriver.getDriverId());
+            userRepository.save(user);
+
+            return modelMapper.map(savedDriver, DriverDTO.class);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid input: " + e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Error creating driver: " + e.getMessage());
+            throw new RuntimeException("Error creating driver", e);
         }
-
-        setUserIdFromCurrentUser(driverDTO);
-
-        Driver driver = modelMapper.map(driverDTO, Driver.class);
-        handleProfilePictureUpload(driver, profilePicture);
-
-        Driver savedDriver = driverRepository.save(driver);
-        updateUserWithDriverId(savedDriver);
-
-        return modelMapper.map(savedDriver, DriverDTO.class);
     }
 
     public Optional<DriverDTO> getDriverById(Integer id) {
-        validateId(id);
-        return driverRepository.findById(id)
-                .map(driver -> modelMapper.map(driver, DriverDTO.class));
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Driver ID cannot be null");
+            }
+            Optional<Driver> driver = driverRepository.findById(id);
+            if (driver.isPresent()) {
+                return Optional.of(modelMapper.map(driver.get(), DriverDTO.class));
+            }
+            return Optional.empty();
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid input: " + e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            System.err.println("Error getting driver by ID: " + e.getMessage());
+            return Optional.empty();
+        }
     }
 
     public Optional<DriverDTO> getDriverByLicenseNumber(String licenseNumber) {
-        validateLicenseNumber(licenseNumber);
-        return driverRepository.findByLicenseNumber(licenseNumber)
-                .map(driver -> modelMapper.map(driver, DriverDTO.class));
+        try {
+            if (licenseNumber == null || licenseNumber.isEmpty()) {
+                throw new IllegalArgumentException("License number cannot be null or empty");
+            }
+            Optional<Driver> driver = driverRepository.findByLicenseNumber(licenseNumber);
+            if (driver.isPresent()) {
+                DriverDTO driverDTO = modelMapper.map(driver.get(), DriverDTO.class);
+                return Optional.of(driverDTO);
+            }
+            return Optional.empty();
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid input: " + e.getMessage());
+            return Optional.empty();
+        } catch (Exception e) {
+            System.err.println("Error getting driver by license number: " + e.getMessage());
+            return Optional.empty();
+        }
     }
 
-    @Transactional
     public DriverDTO updateDriver(Integer id, DriverDTO driverDTO, MultipartFile profilePicture) {
-        validateId(id);
-        validateDriverDTO(driverDTO);
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Driver ID cannot be null");
+            }
+            if (driverDTO == null) {
+                throw new IllegalArgumentException("Driver object cannot be null");
+            }
+            Optional<Driver> existingDriver = driverRepository.findById(id);
+            if (existingDriver.isPresent()) {
+                Driver driver = modelMapper.map(driverDTO, Driver.class);
+                driver.setDriverId(id);
 
-        Driver existingDriver = driverRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Driver not found with ID: " + id));
+                // Handle profile picture update
+                if (profilePicture != null && !profilePicture.isEmpty()) {
+                    String profilePicturePath = imageStorageUtil.saveImage(profilePicture, uploadPath);
+                    driver.setProfilePicturePath(profilePicturePath);
+                }
 
-        modelMapper.map(driverDTO, existingDriver);
-        existingDriver.setDriverId(id);
-
-        handleProfilePictureUpload(existingDriver, profilePicture);
-
-        Driver updatedDriver = driverRepository.save(existingDriver);
-        return modelMapper.map(updatedDriver, DriverDTO.class);
+                Driver updatedDriver = driverRepository.save(driver);
+                return modelMapper.map(updatedDriver, DriverDTO.class);
+            } else {
+                throw new IllegalArgumentException("Driver not found with ID: " + id);
+            }
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid input: " + e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Error updating driver: " + e.getMessage());
+            throw new RuntimeException("Error updating driver", e);
+        }
     }
 
-    @Transactional
     public void deleteDriver(Integer id) {
-        validateId(id);
-        driverRepository.deleteById(id);
+        try {
+            if (id == null) {
+                throw new IllegalArgumentException("Driver ID cannot be null");
+            }
+            driverRepository.deleteById(id);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid input: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error deleting driver: " + e.getMessage());
+            // Consider whether to re-throw the exception or handle it.
+        }
     }
 
     public List<DriverDTO> getAllDrivers() {
-        return driverRepository.findAll().stream()
-                .map(driver -> modelMapper.map(driver, DriverDTO.class))
-                .collect(Collectors.toList());
+        try {
+            List<Driver> drivers = driverRepository.findAll();
+            return drivers.stream()
+                    .map(driver -> modelMapper.map(driver, DriverDTO.class))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Error getting all drivers: " + e.getMessage());
+            return List.of();
+        }
     }
 
     public List<DriverDTO> getDriversByStatus(String status) {
-        validateStatus(status);
-        return driverRepository.findByStatus(status).stream()
-                .map(driver -> modelMapper.map(driver, DriverDTO.class))
-                .collect(Collectors.toList());
+        try {
+            if (status == null || status.isEmpty()) {
+                throw new IllegalArgumentException("Status cannot be null or empty");
+            }
+            List<Driver> drivers = driverRepository.findByStatus(status);
+            return drivers.stream()
+                    .map(driver -> modelMapper.map(driver, DriverDTO.class))
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid input: " + e.getMessage());
+            return List.of();
+        } catch (Exception e) {
+            System.err.println("Error getting drivers by status: " + e.getMessage());
+            return List.of();
+        }
     }
+
 
     public boolean hasDriverProfile() {
-        String currentUsername = getCurrentUsername();
-        return userRepository.findByUsername(currentUsername)
-                .map(User::getDriverId)
-                .isPresent();
-    }
-
-    private void validateDriverDTO(DriverDTO driverDTO) {
-        if (driverDTO == null) {
-            throw new IllegalArgumentException("Driver object cannot be null");
-        }
-    }
-
-    private void validateId(Integer id) {
-        if (id == null) {
-            throw new IllegalArgumentException("Driver ID cannot be null");
-        }
-    }
-
-    private void validateLicenseNumber(String licenseNumber) {
-        if (licenseNumber == null || licenseNumber.isEmpty()) {
-            throw new IllegalArgumentException("License number cannot be null or empty");
-        }
-    }
-
-    private void validateStatus(String status) {
-        if (status == null || status.isEmpty()) {
-            throw new IllegalArgumentException("Status cannot be null or empty");
-        }
-    }
-
-    private void setUserIdFromCurrentUser(DriverDTO driverDTO) {
-        if (driverDTO.getUserId() == null) {
-            String currentUsername = getCurrentUsername();
-            userRepository.findByUsername(currentUsername).ifPresent(user -> driverDTO.setUserId(user.getId()));
-        }
-    }
-
-    private String getCurrentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication.getName();
-    }
-
-    private void handleProfilePictureUpload(Driver driver, MultipartFile profilePicture) {
-        if (profilePicture != null && !profilePicture.isEmpty()) {
-            String profilePicturePath = imageStorageUtil.saveImage(profilePicture, uploadPath);
-            driver.setProfilePicturePath(profilePicturePath);
+        String currentUsername = authentication.getName();
+        Optional<User> userOptional = userRepository.findByUsername(currentUsername);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            return user.getDriverId() != null;
         }
-    }
-
-    private void updateUserWithDriverId(Driver driver) {
-        userRepository.findById(driver.getUserId())
-                .ifPresent(user -> {
-                    user.setDriverId(driver.getDriverId());
-                    userRepository.save(user);
-                });
+        return false;
     }
 }
