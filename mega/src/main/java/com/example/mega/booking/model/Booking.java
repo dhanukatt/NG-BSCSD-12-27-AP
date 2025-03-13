@@ -1,60 +1,72 @@
-package com.example.mega.booking.model;
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-import lombok.Data;
-
-@Data
-@Entity
-@Table(name = "bookings")
-public class Booking {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "booking_id")
-    private Integer bookingId;
-
-    @NotBlank(message = "Booking number cannot be blank")
-    @Size(max = 255, message = "Booking number cannot exceed 255 characters")
-    @Column(name = "booking_number", unique = true)
-    private String bookingNumber;
-
-    @Column(name = "customer_id")
-    private Integer customerId;
-
-    @Column(name = "vehicle_id")
-    private Integer vehicleId;
-
-    @Column(name = "driver_id")
-    private Integer driverId;
-
-    @NotBlank(message = "Pickup address cannot be blank")
-    @Size(max = 255, message = "Pickup address cannot exceed 255 characters")
-    @Column(name = "pickup_address")
-    private String pickupAddress;
-
-    @NotBlank(message = "Destination address cannot be blank")
-    @Size(max = 255, message = "Destination address cannot exceed 255 characters")
-    @Column(name = "destination_address")
-    private String destinationAddress;
-
-    @Column(name = "pickup_time")
-    private LocalDateTime pickupTime;
-
-    @Column(name = "dropoff_time")
-    private LocalDateTime dropoffTime;
-
-    @Size(max = 255, message = "Status cannot exceed 255 characters")
-    private String status;
-
-    private BigDecimal distance;
-
-    private BigDecimal amount;
-
-    @Column(name = "booking_date")
-    private LocalDateTime bookingDate;
+interface Booking {
+    bookingId: number;
+    bookingNumber: string;
+    customerId: number;
+    vehicleId: number;
+    driverId: number;
+    pickupAddress: string;
+    destinationAddress: string;
+    pickupTime: string;
+    dropoffTime: string;
+    status: string;
+    distance: number;
+    amount: number;
+    bookingDate: string;
 }
+
+const BookingList: React.FC = () => {
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchBookings = async () => {
+            try {
+                const response = await axios.get('/bookings'); // Fetch data from the backend
+                setBookings(response.data);
+                setLoading(false);
+            } catch (err) {
+                setError('Failed to fetch bookings');
+                setLoading(false);
+            }
+        };
+
+        fetchBookings();
+    }, []);
+
+    if (loading) return <div className="text-gray-300 p-4">Loading bookings...</div>;
+    if (error) return <div className="text-red-400 p-4">{error}</div>;
+
+    return (
+        <div className="bg-gray-900 text-white p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-indigo-500 mb-4">Booking List</h2>
+            <table className="w-full text-left">
+                <thead>
+                    <tr className="border-b border-gray-700">
+                        <th className="py-2">Booking Number</th>
+                        <th className="py-2">Pickup Address</th>
+                        <th className="py-2">Destination Address</th>
+                        <th className="py-2">Status</th>
+                        <th className="py-2">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {bookings.map((booking) => (
+                        <tr key={booking.bookingId} className="border-b border-gray-700 hover:bg-gray-800">
+                            <td className="py-2">{booking.bookingNumber}</td>
+                            <td className="py-2">{booking.pickupAddress}</td>
+                            <td className="py-2">{booking.destinationAddress}</td>
+                            <td className="py-2">{booking.status}</td>
+                            <td className="py-2">{booking.amount}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+export default BookingList;
