@@ -53,7 +53,7 @@ const About: React.FC = () => {
                 </li>
               </ul>
             </div>
-          </div>a
+          </div>
         </div>
       </main>
       <Footer />
